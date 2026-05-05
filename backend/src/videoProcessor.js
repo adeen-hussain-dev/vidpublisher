@@ -57,7 +57,8 @@ export async function processVideo({ videoPath, musicPath, addSubtitles, logoPat
       await transcribeWithWhisper(videoPath, srtPath);
       hasSubs = fs.existsSync(srtPath) && fs.statSync(srtPath).size > 0;
     } catch (e) {
-      console.warn('[Whisper] Failed, skipping subtitles:', e.message);
+      console.warn('[Whisper] Subtitle generation failed (continuing without subs)');
+      console.warn('[Whisper] Error:', e.message);
     }
   }
 
