@@ -1,0 +1,6 @@
+{
+  "name": "vidpublisher",
+  "scripts": {
+    "start": "cd backend && npm ci && npm start"
+  }
+}
