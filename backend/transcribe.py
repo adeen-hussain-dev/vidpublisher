@@ -13,8 +13,7 @@ Model sizes: tiny, base, small, medium, large (default: base)
 
 import sys
 import os
-import json
-import whisper
+from faster_whisper import WhisperModel
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -60,30 +59,40 @@ def segments_to_chunks(segments, words_per_chunk=3):
 
 def transcribe(video_path, output_srt_path, model_size='base'):
     print(f"[Whisper] Loading model: {model_size}", flush=True)
-    model = whisper.load_model(model_size)
+    model = WhisperModel(model_size, device='cpu', compute_type='int8')
 
     print(f"[Whisper] Transcribing: {video_path}", flush=True)
-    result = model.transcribe(
+    segments_iter, info = model.transcribe(
         video_path,
-        word_timestamps=True,   # get word-level timing
-        fp16=False,              # use fp32 for CPU compatibility
-        verbose=False
+        word_timestamps=True,
+        vad_filter=True,
     )
+    segments = list(segments_iter)
 
-    print(f"[Whisper] Detected language: {result.get('language', 'unknown')}", flush=True)
+    print(f"[Whisper] Detected language: {getattr(info, 'language', 'unknown')}", flush=True)
 
     # Try to use word-level timestamps first (most accurate)
     all_words = []
-    for segment in result['segments']:
-        if 'words' in segment and segment['words']:
-            all_words.extend(segment['words'])
+    for segment in segments:
+        if getattr(segment, 'words', None):
+            for w in segment.words:
+                all_words.append({
+                    'word': (w.word or '').strip(),
+                    'start': float(w.start),
+                    'end': float(w.end),
+                })
 
     if all_words:
         print(f"[Whisper] Using word-level timestamps ({len(all_words)} words)", flush=True)
         chunks = words_to_chunks(all_words, words_per_chunk=3)
     else:
         print(f"[Whisper] Falling back to segment-level timestamps", flush=True)
-        chunks = segments_to_chunks(result['segments'], words_per_chunk=3)
+        seg_dicts = [{
+            'text': (s.text or '').strip(),
+            'start': float(s.start),
+            'end': float(s.end),
+        } for s in segments]
+        chunks = segments_to_chunks(seg_dicts, words_per_chunk=3)
 
     # Write SRT file
     srt_content = ''
@@ -100,7 +109,7 @@ def transcribe(video_path, output_srt_path, model_size='base'):
     print(f"[Whisper] Total subtitle chunks: {len(chunks)}", flush=True)
 
     # Output full transcript for logging
-    full_text = result['text'].strip()
+    full_text = ' '.join((s.text or '').strip() for s in segments).strip()
     print(f"[Whisper] Transcript: {full_text[:100]}...", flush=True)
 
 if __name__ == '__main__':
