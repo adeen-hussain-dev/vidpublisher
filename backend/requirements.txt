@@ -1,4 +1,2 @@
---no-build-isolation
-setuptools<81
-wheel
+-c constraints.txt
 openai-whisper==20240930
