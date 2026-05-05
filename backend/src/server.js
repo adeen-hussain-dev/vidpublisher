@@ -26,6 +26,7 @@ if (fs.existsSync(envPath)) {
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const HOST = process.env.HOST || '0.0.0.0';
 const MUSIC_DIR = path.join(__dirname, '..', 'music');
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 const LOGOS_DIR = path.join(__dirname, '..', 'assets', 'logos');
@@ -191,8 +192,8 @@ app.post('/api/publish', videoUpload.single('video'), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 VidPublisher backend running on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`\n🚀 VidPublisher backend running on http://${HOST}:${PORT}`);
   console.log(`   Music:   ${MUSIC_DIR}`);
   console.log(`   Uploads: ${UPLOADS_DIR}`);
   console.log(`   Logos:   ${LOGOS_DIR}\n`);
