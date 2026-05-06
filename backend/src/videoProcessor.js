@@ -3,8 +3,9 @@ import ffmpegStatic from 'ffmpeg-static';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { generateSRT } from './transcirber.js';
+
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,24 +20,17 @@ function getVideoDuration(videoPath) {
   });
 }
 
-function transcribeWithWhisper(videoPath, srtPath) {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '..', 'transcribe.py');
-    if (!fs.existsSync(scriptPath)) {
-      return reject(new Error('transcribe.py not found in backend root.'));
-    }
-    const py = process.platform === 'win32' ? 'python' : 'python3';
-    console.log('[Whisper] Starting transcription...');
-    const proc = spawn(py, [scriptPath, videoPath, srtPath, 'base'], { stdio: ['pipe', 'pipe', 'pipe'] });
-    let stderr = '';
-    proc.stdout.on('data', d => console.log('[Whisper]', d.toString().trim()));
-    proc.stderr.on('data', d => { stderr += d.toString(); });
-    proc.on('close', code => {
-      if (code === 0 && fs.existsSync(srtPath)) resolve(srtPath);
-      else reject(new Error(`Whisper failed: ${stderr.slice(0, 200)}`));
-    });
-    proc.on('error', err => reject(new Error(`Python not found: ${err.message}`)));
-  });
+// In processVideo function:
+let srtPath = null;
+let hasSubs = false;
+
+if (addSubtitles) {
+  try {
+    srtPath = await generateSRT(videoPath);
+    hasSubs = true;
+  } catch (e) {
+    console.warn('[Subtitles] Failed, skipping:', e.message);
+  }
 }
 
 export async function processVideo({ videoPath, musicPath, addSubtitles, logoPath }) {
