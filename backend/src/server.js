@@ -152,11 +152,12 @@ app.post('/api/publish', videoUpload.single('video'), async (req, res) => {
         try {
           if (page.platform === 'facebook') {
             const id = await postToFacebook({
-              videoPath: processedPath,
-              caption,
-              pageId: page.pageId,
-              token: page.token,
-            });
+  videoPath: processedPath,
+  title,           // ← pass title separately
+  hashtags,        // ← pass hashtags separately
+  pageId: page.pageId,
+  token: page.token,
+});
             results.push({ pageId: page.id, platform: 'facebook', name: page.name, status: 'success', id });
             console.log(`[Publish] ✅ Facebook (${page.name}): ${id}`);
           } else if (page.platform === 'youtube') {

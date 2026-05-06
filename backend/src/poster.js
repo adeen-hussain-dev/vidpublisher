@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 
 // ─── FACEBOOK ────────────────────────────────────────────────────────────────
 
-export async function postToFacebook({ videoPath, caption, pageId, token }) {
+export async function postToFacebook({ videoPath, title, hashtags, pageId, token }) {
   if (!pageId || !token) throw new Error('Missing FB_PAGE_ID or FB_TOKEN');
 
   // Step 1: Init reel upload
@@ -33,17 +33,18 @@ export async function postToFacebook({ videoPath, caption, pageId, token }) {
   if (!uploadRes.ok) throw new Error(`FB upload failed: ${await uploadRes.text()}`);
 
   // Step 3: Publish
-  const pub = await fetch(`https://graph.facebook.com/v19.0/${pageId}/video_reels`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      upload_phase: 'finish',
-      video_id,
-      access_token: token,
-      description: caption,
-      video_state: 'PUBLISHED',
-    }),
-  });
+  const pub =  await fetch(`https://graph.facebook.com/v19.0/${pageId}/video_reels`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    upload_phase: 'finish',
+    video_id,
+    access_token: token,
+    title: title,                        // ← separate title field
+    description: hashtags.join(' '),     // ← hashtags only in description
+    video_state: 'PUBLISHED',
+  }),
+});
   const pubData = await pub.json();
   if (pubData.error) throw new Error(`FB publish failed: ${JSON.stringify(pubData.error)}`);
   return video_id;
