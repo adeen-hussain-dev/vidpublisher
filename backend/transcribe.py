@@ -6,14 +6,15 @@ Called automatically by Node.js videoProcessor.js
 Usage: python transcribe.py <video_path> <output_srt_path> [model_size]
 Model sizes: tiny, base, small, medium, large (default: base)
 - tiny:   fastest, least accurate (~1GB RAM)
--   :   good balance (~1GB RAM)  ← recommended
+- base:   good balance (~1GB RAM)  ← recommended
 - small:  better accuracy (~2GB RAM)
 - medium: high accuracy (~5GB RAM)
 """
 
 import sys
 import os
-from faster_whisper import WhisperModel
+import json
+import whisper
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -59,40 +60,30 @@ def segments_to_chunks(segments, words_per_chunk=3):
 
 def transcribe(video_path, output_srt_path, model_size='base'):
     print(f"[Whisper] Loading model: {model_size}", flush=True)
-    model = WhisperModel(model_size, device='cpu', compute_type='int8')
+    model = whisper.load_model(model_size)
 
     print(f"[Whisper] Transcribing: {video_path}", flush=True)
-    segments_iter, info = model.transcribe(
+    result = model.transcribe(
         video_path,
-        word_timestamps=True,
-        vad_filter=True,
+        word_timestamps=True,   # get word-level timing
+        fp16=False,              # use fp32 for CPU compatibility
+        verbose=False
     )
-    segments = list(segments_iter)
 
-    print(f"[Whisper] Detected language: {getattr(info, 'language', 'unknown')}", flush=True)
+    print(f"[Whisper] Detected language: {result.get('language', 'unknown')}", flush=True)
 
     # Try to use word-level timestamps first (most accurate)
     all_words = []
-    for segment in segments:
-        if getattr(segment, 'words', None):
-            for w in segment.words:
-                all_words.append({
-                    'word': (w.word or '').strip(),
-                    'start': float(w.start),
-                    'end': float(w.end),
-                })
+    for segment in result['segments']:
+        if 'words' in segment and segment['words']:
+            all_words.extend(segment['words'])
 
     if all_words:
         print(f"[Whisper] Using word-level timestamps ({len(all_words)} words)", flush=True)
         chunks = words_to_chunks(all_words, words_per_chunk=3)
     else:
         print(f"[Whisper] Falling back to segment-level timestamps", flush=True)
-        seg_dicts = [{
-            'text': (s.text or '').strip(),
-            'start': float(s.start),
-            'end': float(s.end),
-        } for s in segments]
-        chunks = segments_to_chunks(seg_dicts, words_per_chunk=3)
+        chunks = segments_to_chunks(result['segments'], words_per_chunk=3)
 
     # Write SRT file
     srt_content = ''
@@ -109,7 +100,7 @@ def transcribe(video_path, output_srt_path, model_size='base'):
     print(f"[Whisper] Total subtitle chunks: {len(chunks)}", flush=True)
 
     # Output full transcript for logging
-    full_text = ' '.join((s.text or '').strip() for s in segments).strip()
+    full_text = result['text'].strip()
     print(f"[Whisper] Transcript: {full_text[:100]}...", flush=True)
 
 if __name__ == '__main__':
