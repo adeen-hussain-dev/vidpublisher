@@ -16,7 +16,7 @@ RULES FOR TITLE:
 - NO description, NO explanation — just the title
 
 RULES FOR HASHTAGS:
-- Exactly 25 hashtags
+- Exactly 15 hashtags
 - Mix of: viral/trending tags, niche-specific tags, broad reach tags
 - Include 1-2 emojis as hashtags (e.g. #🔥 #💥)
 - All start with #, no spaces inside
@@ -49,16 +49,37 @@ Return ONLY valid JSON (no markdown, no backticks, no explanation):
   const raw = data.choices?.[0]?.message?.content || '';
   const cleaned = raw.replace(/```json|```/g, '').trim();
 
+  const defaultHashtags = [
+    '#ai',
+    '#artificialintelligence',
+    '#generativeai',
+    '#aianimation',
+    '#aifilm',
+    '#digitalart',
+    '#surreal',
+    '#futureofcontent',
+    '#aimovie',
+    '#midjourney',
+    '#videogen',
+    '#aiartcommunity',
+    '#creativeai',
+    '#tech',
+    '#innovation',
+  ];
+
   try {
     const parsed = JSON.parse(cleaned);
+    const generatedHashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
+    const combinedHashtags = [...new Set([...generatedHashtags, ...defaultHashtags])];
+    
     return {
       title: parsed.title || '🔥 Epic Video',
-      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 25) : [],
+      hashtags: combinedHashtags.slice(0, 40),
     };
   } catch {
     return {
       title: '🔥 You Won\'t Believe This',
-      hashtags: ['#viral', '#trending', '#fyp', '#reels', '#shorts'],
+      hashtags: defaultHashtags,
     };
   }
 }
